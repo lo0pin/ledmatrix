@@ -7,7 +7,7 @@
 #include <Adafruit_BME280.h>
 
 
-
+bool sommerzeit = false;
 
 
 // ================================
@@ -480,4 +480,55 @@ void readBME(float& T, float& H, float& P, Adafruit_BME280& bme_var){
   T /= number_of_measurements;
   H /= number_of_measurements;
   P /= number_of_measurements;
+}
+
+static uint16_t lastAdjustYday = 65535; // Marker gegen Mehrfach-Adjust (unmöglicher Startwert)
+
+void CheckZeitumstellung(RTC_DS3231& rtc_ref, const DateTime& dt) {
+  // "Tag-im-Jahr" – reicht als Einmal-Sperre pro Kalendertag
+  uint16_t yday = DateTime(dt.year(), dt.month(), dt.day()).unixtime() / 86400;
+
+  // --- Umstellung auf Winterzeit (CEST -> CET): letzter Sonntag im Oktober, 03:00 -> 02:00 ---
+  if (sommerzeit &&
+      isLastSundayOfOctober(dt) &&
+      dt.hour() == 3 && dt.minute() == 0 && dt.second() == 0 &&
+      yday != lastAdjustYday) {
+
+    rtc_ref.adjust(DateTime(dt.year(), dt.month(), dt.day(),
+                            2, dt.minute(), dt.second())); // eine Stunde zurück
+    sommerzeit = false;
+    lastAdjustYday = yday;
+    return; // defensiv: an diesem Tick nichts weiter
+  }
+
+  
+
+  // --- Umstellung auf Sommerzeit (CET -> CEST): letzter Sonntag im März, 02:00 -> 03:00 ---
+  if (!sommerzeit &&
+      isLastSundayOfMarch(dt) &&
+      dt.hour() == 2 && dt.minute() == 0 && dt.second() == 0 &&
+      yday != lastAdjustYday) {
+
+    rtc_ref.adjust(DateTime(dt.year(), dt.month(), dt.day(),
+                            3, dt.minute(), dt.second())); // eine Stunde vor
+    sommerzeit = true;
+    lastAdjustYday = yday;
+    return;
+  }
+
+  // Kein expliziter Reset nötig: am Folgetag ist yday != lastAdjustYday automatisch erfüllt.
+}
+
+bool isLastSundayOfOctober(const DateTime& dt) {
+  if (dt.month() != 10) return false;
+  // letzter Sonntag: wenn zum Datum innerhalb der nächsten 7 Tage der Monatswechsel käme
+  // dayOfTheWeek(): 0=So,1=Mo,...6=Sa
+  return dt.dayOfTheWeek() == 0 && (dt.day() + 7) > 31;
+}
+
+bool isLastSundayOfMarch(const DateTime& dt) {
+  if (dt.month() != 3) return false;
+  // letzter Sonntag: wenn zum Datum innerhalb der nächsten 7 Tage der Monatswechsel käme
+  // dayOfTheWeek(): 0=So,1=Mo,...6=Sa
+  return dt.dayOfTheWeek() == 0 && (dt.day() + 7) > 31;
 }

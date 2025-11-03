@@ -10,6 +10,8 @@ class RTC_DS3231;
 class Adafruit_BME280;
 
 
+extern bool sommerzeit;
+
 // Baut aus Text einen Spaltenpuffer (Columns) für das Matrix-Display.
 // result: Zielpuffer (byte-Array)
 // resultMax: maximale Anzahl Spalten
@@ -51,3 +53,8 @@ void printbaro(MD_MAX72XX& mx_var, const float* baros, const int baro_len, const
 void writebaroentry(float* baros, const int currenthour, float pressure);
 
 void readBME(float& T, float& H, float& P, Adafruit_BME280& bme_var);
+
+void CheckZeitumstellung(RTC_DS3231& rtc_ref, const DateTime& dt);
+
+bool isLastSundayOfOctober(const DateTime& dt);
+bool isLastSundayOfMarch(const DateTime& dt);
