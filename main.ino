@@ -11,18 +11,17 @@
 
 int mode = 0;
 /*
- * 0 = laufschrift
- * 1 = einblenden, der reihe nach
+ 0 = laufschrift
+ 1 = einblenden, der reihe nach
  */
 
 /*
-  Verdrahtung (Arduino Uno):
-    SDA -> A4 (oder SDA-Pin)
-    SCL -> A5 (oder SCL-Pin)
-    VCC -> 5V (RTC) / 3.3V (BME280) *oder* 5V falls das BME280-Board Pegelwandler/Regler hat
-    GND -> GND
+Verdrahtung (Arduino Uno):
+  SDA -> A4 (oder SDA-Pin)
+  SCL -> A5 (oder SCL-Pin)
+  VCC -> 5V (RTC) / 3.3V (BME280) *oder* 5V falls das BME280-Board Pegelwandler/Regler hat
+  GND -> GND
 */
-
 
 // >>> Passe diesen Hardware-Typ an dein Modul an (häufig FC16_HW). <<<
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW   // z.B. FC16_HW, PAROLA_HW, GENERIC_HW
@@ -32,20 +31,20 @@ int mode = 0;
 // Globale Display-Instanz (Hardware-SPI)
 MD_MAX72XX mx(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 
-
 // I2C-Instanz RTC:
 RTC_DS3231 rtc;     // Für DS3231 (genauer & mit Temperatur)
 
 
 // I2C-Instanz Sensor
-Adafruit_BME280 bme;
-// Hinweis: BME280 hat meist I2C-Adresse 0x76 ODER 0x77
+Adafruit_BME280 bme; // Hinweis: BME280 hat meist I2C-Adresse 0x76 ODER 0x77
 
 const float ALTITUDE = 353.0;               // Höhe über NN in Metern
 //const float SEA_LEVEL_REFERENCE = 1013.25;  // hPa Referenz (optional)
 float pressureOffset = 0.0;                 // manuelle Kalibrierung in hPa
 //const int hoehe_m = 353;                  //Meereshöhe von Graz
 float T =0 , H = 0, P = 0;
+
+int old_hour = -1; 
 
 
 // --- Konfiguration ---
@@ -97,6 +96,7 @@ void setup()
   columns = createMessage(message, buf, maxleng, spacerint);
   Serial.println(F("Setup abgeschlossen.\n"));
   //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  (void)loadBaroFromEEPROM(baro_messungen, BARO_LEN);
 }
 
 
@@ -112,8 +112,7 @@ void loop()
     //Serial.print(F("RTC: "));
     //printDateTime(now);
     CheckZeitumstellung(rtc, now);
-
-
+    const int h = (int)now.hour();
 
     //Luftdruck über die letzten 24h ausgeben
     if (!firstrun) {
@@ -153,8 +152,14 @@ void loop()
   if (now_timer - lastTick < STEP_MS) return;           // noch nicht Zeit für den nächsten Frame
   lastTick = now_timer;
   writeMessage(buf, columns, mx, iterations++);
-
-
+  
+  DateTime right_now = rtc.now();
+  const int h = (int)right_now.hour();
+  if (h != old_hour) {
+    old_hour = h;
+    // an dieser Stelle ist der neue Stundenwert typischerweise gesetzt:
+    saveBaroToEEPROM(baro_messungen, BARO_LEN);
+  }
 
 
 

@@ -6,6 +6,75 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 
+#include <EEPROM.h>
+#include <limits.h>   // INT16_MIN
+
+// Startadresse im EEPROM (kannst du verschieben, falls du noch andere Daten speicherst)
+static constexpr int EEPROM_ADDR = 0;
+
+// Datenlayout im EEPROM
+struct BaroStore {
+  uint16_t magic;               // Erkennungsmarke
+  uint8_t  version;             // Version
+  int16_t  hPa_x10[BARO_LEN];   // 24 Werte, INT16_MIN => „kein Wert“
+  uint8_t  checksum;            // einfache 8-Bit-Checksumme
+};
+
+static uint8_t checksum8(const int16_t* data, uint8_t len) {
+  uint16_t sum = 0;
+  for (uint8_t i = 0; i < len; ++i) {
+    uint16_t v = static_cast<uint16_t>(data[i]);
+    sum += (v & 0xFF);
+    sum += (v >> 8) & 0xFF;
+  }
+  return static_cast<uint8_t>(sum & 0xFF);
+}
+
+void saveBaroToEEPROM(const float* src, uint8_t len) {
+  BaroStore s;
+  s.magic   = BARO_MAGIC;
+  s.version = BARO_VER;
+
+  for (uint8_t i = 0; i < BARO_LEN; ++i) {
+    if (i < len && isfinite(src[i]) && src[i] >= 0.0f) {
+      long scaled = lroundf(src[i] * 10.0f); // hPa → hPa×10
+      if (scaled < INT16_MIN) scaled = INT16_MIN;
+      if (scaled > INT16_MAX) scaled = INT16_MAX;
+      s.hPa_x10[i] = static_cast<int16_t>(scaled);
+    } else {
+      s.hPa_x10[i] = INT16_MIN; // „kein Wert“
+    }
+  }
+
+  s.checksum = checksum8(s.hPa_x10, BARO_LEN);
+  EEPROM.put(EEPROM_ADDR, s);   // schreibt nur geänderte Bytes → Wear-Schutz
+}
+
+bool loadBaroFromEEPROM(float* dst, uint8_t len) {
+  BaroStore s;
+  EEPROM.get(EEPROM_ADDR, s);
+
+  if (s.magic != BARO_MAGIC || s.version != BARO_VER) {
+    // ungültig/leer
+    for (uint8_t i = 0; i < len; ++i) dst[i] = -1.0f;
+    return false;
+  }
+
+  const uint8_t calc = checksum8(s.hPa_x10, BARO_LEN);
+  if (calc != s.checksum) {
+    for (uint8_t i = 0; i < len; ++i) dst[i] = -1.0f;
+    return false;
+  }
+
+  for (uint8_t i = 0; i < len; ++i) {
+    const int16_t v = s.hPa_x10[i];
+    dst[i] = (v == INT16_MIN) ? -1.0f : (static_cast<float>(v) / 10.0f);
+  }
+  return true;
+}
+
+
+
 
 bool sommerzeit = false;
 

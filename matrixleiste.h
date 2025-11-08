@@ -1,6 +1,18 @@
 #pragma once
 #include <Arduino.h>
 
+constexpr uint8_t  BARO_LEN   = 24;   // 24 Stunden
+constexpr uint16_t BARO_MAGIC = 0xBADA;
+constexpr uint8_t  BARO_VER   = 1;
+
+// Speichert das Stunden-Array baro_messungen in den EEPROM
+void saveBaroToEEPROM(const float* src, uint8_t len = BARO_LEN);
+
+// Lädt das Stunden-Array baro_messungen aus dem EEPROM
+// Rückgabewert: true = Daten ok, false = ungültig/leer → Caller sollte Array auf -1 setzen
+bool loadBaroFromEEPROM(float* dst, uint8_t len = BARO_LEN);
+
+
 
 
 // Vorwärtsdeklaration reicht für die Signaturen
