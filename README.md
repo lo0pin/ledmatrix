@@ -127,6 +127,10 @@ creating initial message...
 * Optional external calibration or reference pressure sync
 
 ---
+## **Known Issues**
+- [ ] time (hour) does not match after 31.12. anymore
+
+---
 
 ## 📜 **License**
 
