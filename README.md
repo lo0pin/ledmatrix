@@ -6,6 +6,7 @@ Hourly pressure values are stored persistently in the **EEPROM**, allowing the s
 
 ---
 
+
 ## 🔧 **Hardware Components**
 
 | Component                            | Function                          | Connection                  |
