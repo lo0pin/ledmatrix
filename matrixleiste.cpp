@@ -419,7 +419,7 @@ void startUp(RTC_DS3231& rtc_var, Adafruit_BME280& bme_var, MD_MAX72XX& mx_var) 
   // Falls die RTC „stehen blieb“ (z. B. nach Batteriewechsel), Zeit setzen:
   if (rtc_var.lostPower()) {
     Serial.println(F("RTC hat Strom verloren – setze auf Kompilierzeit."));
-    //setTimeOnce(rtc_var); // Einmalig Uhr setzen (siehe Funktion oben)
+    setTimeOnce(rtc_var); // Einmalig Uhr setzen (siehe Funktion oben)
   }
 
   // ---------- BME280 starten ----------
